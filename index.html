@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Beslagset Picker</title>
+<title>Beslagset Picker — Equilli</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: system-ui, -apple-system, sans-serif; background: #f8fafc; min-height: 100vh; }
@@ -17,16 +17,12 @@
   .card .check { font-size: 22px; margin-left: auto; }
   .btn { padding: 14px 32px; border-radius: 12px; border: none; color: #fff; font-size: 18px; font-weight: 700; cursor: pointer; width: 100%; max-width: 360px; margin: 12px auto 0; display: block; }
   .btn:disabled { background: #d1d5db !important; cursor: not-allowed; }
+  .btn-sm { padding: 10px 20px; font-size: 14px; border-radius: 10px; border: none; color: #fff; font-weight: 600; cursor: pointer; }
   .back { background: none; border: none; font-size: 15px; color: #6b7280; cursor: pointer; padding: 6px 0; margin-bottom: 8px; }
   h1 { font-size: 26px; font-weight: 800; color: #111827; }
   h2 { font-size: 20px; font-weight: 800; color: #111827; }
   .sub { font-size: 15px; color: #6b7280; margin-top: 4px; }
-  .sub.highlight { color: #dc2626; font-weight: 600; }
   .badge { display: inline-block; padding: 3px 12px; border-radius: 7px; font-size: 13px; font-weight: 700; }
-  .progress { display: flex; gap: 6px; margin-bottom: 20px; }
-  .progress .step { flex: 1; }
-  .progress .bar { height: 5px; border-radius: 3px; margin-bottom: 3px; }
-  .progress .name { font-size: 10px; }
 
   .item-row { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 10px; border: 2px solid #f3f4f6; background: #fff; cursor: pointer; width: 100%; margin-bottom: 5px; text-align: left; transition: all 0.1s; }
   .item-row.done { border-color: #059669; background: #f0fdf4; }
@@ -35,7 +31,8 @@
   .item-row .qty { display: inline-block; color: #fff; border-radius: 5px; padding: 1px 7px; font-size: 13px; font-weight: 800; margin-right: 8px; min-width: 24px; text-align: center; }
   .item-row .name { font-size: 16px; font-weight: 600; color: #111827; }
   .item-row.done .name { color: #059669; text-decoration: line-through; }
-  .item-row .note { font-size: 12px; color: #9ca3af; margin-top: 1px; margin-left: 40px; }
+  .item-row .note { font-size: 12px; color: #9ca3af; margin-top: 1px; }
+  .item-row .loc { font-size: 11px; color: #2563eb; font-weight: 600; background: #eff6ff; padding: 1px 6px; border-radius: 4px; margin-top: 2px; display: inline-block; }
 
   .box-tab { padding: 5px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; border: 1px solid #e5e7eb; background: #fff; color: #6b7280; cursor: pointer; }
   .box-tab.active { border-width: 2px; }
@@ -45,6 +42,23 @@
   .color-btn:active { background: #fef3c7; }
 
   .complete-box { margin-top: 16px; background: #059669; border-radius: 14px; padding: 18px; text-align: center; color: #fff; }
+
+  .img-gallery { display: flex; gap: 6px; margin-bottom: 12px; overflow-x: auto; padding-bottom: 6px; }
+  .img-gallery img { height: 120px; border-radius: 8px; border: 2px solid #e5e7eb; cursor: pointer; flex-shrink: 0; object-fit: cover; }
+  .img-gallery img:hover { border-color: #3b82f6; }
+
+  .lightbox { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); z-index: 1000; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+  .lightbox img { max-width: 95vw; max-height: 90vh; border-radius: 8px; }
+  .lightbox .close-btn { position: absolute; top: 16px; right: 16px; color: #fff; font-size: 32px; font-weight: 800; cursor: pointer; background: rgba(0,0,0,0.5); border: none; border-radius: 50%; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; }
+
+  input[type="text"], select { width: 100%; padding: 14px 16px; border-radius: 12px; border: 2px solid #e5e7eb; font-size: 16px; font-weight: 500; background: #fff; }
+  input[type="text"]:focus, select:focus { outline: none; border-color: #3b82f6; }
+  label { font-size: 14px; font-weight: 600; color: #374151; margin-bottom: 6px; display: block; }
+
+  .history-row { padding: 12px 16px; border-radius: 10px; border: 1px solid #e5e7eb; background: #fff; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; }
+  .history-row .meta { font-size: 13px; color: #6b7280; }
+  .history-row .order { font-size: 16px; font-weight: 700; color: #111827; }
+  .history-row .status { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 6px; }
 
   .zone { margin-bottom: 16px; background: #fafafa; border-radius: 14px; padding: 14px; }
   .zone .tag { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
@@ -58,236 +72,285 @@
 <script>
 // ================================================================
 // BESLAGSET DATABASE — 100% match met brondocumenten
+// loc = magazijnlocatie (in te stellen door warehouse manager)
 // ================================================================
 const DB = {
   "altaia-2elek": {
-    label: "Bedframe Altaia \u2013 Frame & Elektrische Inlegboxen",
+    label: "Bedframe Altaia – Frame & Elektrische Inlegboxen",
     box: "Kleine Doos", color: "#2563eb",
+    images: ["altaia-2elek_0.jpg","altaia-2elek_1.jpg","altaia-2elek_2.jpg"],
     items: [
-      {qty:4, name:"Hoekmontages Poten"},
-      {qty:4, name:"Poten Conisch 60-25x20 Zwart"},
-      {qty:1, name:"Beslagset Hoekmontage Poten"},
-      {qty:1, name:"Installatiehandleiding Frame"},
-      {qty:2, name:"Voedingsadapters"},
-      {qty:2, name:"Beslagsets Metalen Frame"},
-      {qty:2, name:"Beslagsets Ophangbeugels Bedkader"},
-      {qty:1, name:"Installatiehandleiding Koppeling Afstandsbediening"},
+      {qty:4, name:"Hoekmontages Poten", loc:"A-01"},
+      {qty:4, name:"Poten Conisch 60-25x20 Zwart", loc:"A-02"},
+      {qty:1, name:"Beslagset Hoekmontage Poten", loc:"A-03"},
+      {qty:1, name:"Installatiehandleiding Frame", loc:"A-10"},
+      {qty:2, name:"Voedingsadapters", loc:"B-01"},
+      {qty:2, name:"Beslagsets Metalen Frame", loc:"B-02"},
+      {qty:2, name:"Beslagsets Ophangbeugels Bedkader", loc:"B-03"},
+      {qty:1, name:"Installatiehandleiding Koppeling Afstandsbediening", loc:"A-11"},
     ],
   },
   "altaia-1vast-1elek": {
-    label: "Bedframe Altaia \u2013 Frame & Vaste Bodem & Elektrische Inlegbox",
+    label: "Bedframe Altaia – Frame & Vaste Bodem & Elektrische Inlegbox",
     box: "Kleine Doos", color: "#2563eb",
+    images: ["altaia-1vast-1elek_0.jpg","altaia-1vast-1elek_1.jpg","altaia-1vast-1elek_2.jpg"],
     items: [
-      {qty:4, name:"Ophangbeugels Bevestiging"},
-      {qty:4, name:"Ophangbeugels Ophanging"},
-      {qty:1, name:"Steunpoot Middenlat 22-26 cm"},
-      {qty:1, name:"Ophoging Middenlat"},
-      {qty:4, name:"Hoekmontages Poten"},
-      {qty:4, name:"Poten Conisch 60-25x20 Zwart"},
-      {qty:1, name:"Beslagset Ophangbeugels Bodem & Middenlat (1 Vaste + 1 Elektrische Bodem)"},
-      {qty:1, name:"Beslagset Hoekmontage Poten"},
-      {qty:1, name:"Installatiehandleiding Frame"},
-      {qty:1, name:"Voedingsadapter"},
-      {qty:1, name:"Beslagset Metalen Frame"},
-      {qty:1, name:"Beslagset Ophangbeugels Bedkader"},
-      {qty:1, name:"Installatiehandleiding Koppeling Afstandsbediening"},
+      {qty:4, name:"Ophangbeugels Bevestiging", loc:"A-04"},
+      {qty:4, name:"Ophangbeugels Ophanging", loc:"A-05"},
+      {qty:1, name:"Steunpoot Middenlat 22-26 cm", loc:"A-06"},
+      {qty:1, name:"Ophoging Middenlat", loc:"A-07"},
+      {qty:4, name:"Hoekmontages Poten", loc:"A-01"},
+      {qty:4, name:"Poten Conisch 60-25x20 Zwart", loc:"A-02"},
+      {qty:1, name:"Beslagset Ophangbeugels Bodem & Middenlat (1 Vaste + 1 Elektrische Bodem)", loc:"A-08"},
+      {qty:1, name:"Beslagset Hoekmontage Poten", loc:"A-03"},
+      {qty:1, name:"Installatiehandleiding Frame", loc:"A-10"},
+      {qty:1, name:"Voedingsadapter", loc:"B-01"},
+      {qty:1, name:"Beslagset Metalen Frame", loc:"B-02"},
+      {qty:1, name:"Beslagset Ophangbeugels Bedkader", loc:"B-03"},
+      {qty:1, name:"Installatiehandleiding Koppeling Afstandsbediening", loc:"A-11"},
     ],
   },
   "altaia-2vast": {
-    label: "Bedframe Altaia \u2013 Frame & Vaste Bodems",
+    label: "Bedframe Altaia – Frame & Vaste Bodems",
     box: "Kleine Doos", color: "#2563eb",
+    images: ["altaia-2vast_0.jpg","altaia-2vast_1.jpg","altaia-2vast_2.jpg"],
     items: [
-      {qty:6, name:"Ophangbeugels Bevestiging"},
-      {qty:6, name:"Ophangbeugels Ophanging"},
-      {qty:1, name:"Steunpoot Middenlat 22-26 cm"},
-      {qty:4, name:"Hoekmontages Poten"},
-      {qty:4, name:"Poten Conisch 60-25x20 Zwart"},
-      {qty:1, name:"Beslagset Ophangbeugels Bodem & Middenlat (2 Vaste Bodems)"},
-      {qty:1, name:"Beslagset Hoekmontage Poten"},
-      {qty:1, name:"Installatiehandleiding Frame"},
+      {qty:6, name:"Ophangbeugels Bevestiging", loc:"A-04"},
+      {qty:6, name:"Ophangbeugels Ophanging", loc:"A-05"},
+      {qty:1, name:"Steunpoot Middenlat 22-26 cm", loc:"A-06"},
+      {qty:4, name:"Hoekmontages Poten", loc:"A-01"},
+      {qty:4, name:"Poten Conisch 60-25x20 Zwart", loc:"A-02"},
+      {qty:1, name:"Beslagset Ophangbeugels Bodem & Middenlat (2 Vaste Bodems)", loc:"A-09"},
+      {qty:1, name:"Beslagset Hoekmontage Poten", loc:"A-03"},
+      {qty:1, name:"Installatiehandleiding Frame", loc:"A-10"},
     ],
   },
   "less-frame-wit": {
-    label: "Bedframe Less \u2013 Frame Wit", box: "Kleine Doos", color: "#7c3aed",
+    label: "Bedframe Less – Frame Wit", box: "Kleine Doos", color: "#7c3aed",
+    images: ["less-frame_0.jpg","less-frame_1.jpg","less-frame_2.jpg"],
     items: [
-      {qty:2, name:"Ophangbeugels Frame Wit", note:"verpakt als 1 colli"},
-      {qty:2, name:"Steunpoten Inlegbox 17.5-21.5 cm"},
-      {qty:1, name:"Beslagset Sledepoten"},
-      {qty:1, name:"Beslagset Ophangbeugels Frame"},
-      {qty:1, name:"Wit Logo"},
-      {qty:1, name:"Installatiehandleiding Frame"},
+      {qty:2, name:"Ophangbeugels Frame Wit", note:"verpakt als 1 colli", loc:"C-01"},
+      {qty:2, name:"Steunpoten Inlegbox 17.5-21.5 cm", loc:"C-02"},
+      {qty:1, name:"Beslagset Sledepoten", loc:"C-03"},
+      {qty:1, name:"Beslagset Ophangbeugels Frame", loc:"C-04"},
+      {qty:1, name:"Wit Logo", loc:"C-05"},
+      {qty:1, name:"Installatiehandleiding Frame", loc:"C-10"},
     ],
   },
   "less-frame-zwart": {
-    label: "Bedframe Less \u2013 Frame Zwart", box: "Kleine Doos", color: "#7c3aed",
+    label: "Bedframe Less – Frame Zwart", box: "Kleine Doos", color: "#7c3aed",
+    images: ["less-frame_0.jpg","less-frame_1.jpg","less-frame_2.jpg"],
     items: [
-      {qty:2, name:"Ophangbeugels Frame Zwart", note:"verpakt als 1 colli"},
-      {qty:2, name:"Steunpoten Inlegbox 17.5-21.5 cm"},
-      {qty:1, name:"Beslagset Sledepoten"},
-      {qty:1, name:"Beslagset Ophangbeugels Frame"},
-      {qty:1, name:"Zwart Logo"},
-      {qty:1, name:"Installatiehandleiding Frame"},
+      {qty:2, name:"Ophangbeugels Frame Zwart", note:"verpakt als 1 colli", loc:"C-06"},
+      {qty:2, name:"Steunpoten Inlegbox 17.5-21.5 cm", loc:"C-02"},
+      {qty:1, name:"Beslagset Sledepoten", loc:"C-03"},
+      {qty:1, name:"Beslagset Ophangbeugels Frame", loc:"C-04"},
+      {qty:1, name:"Zwart Logo", loc:"C-07"},
+      {qty:1, name:"Installatiehandleiding Frame", loc:"C-10"},
     ],
   },
   "less-frame-hb-wit": {
-    label: "Bedframe Less \u2013 Frame & Hoofdbord Wit", box: "Kleine Doos", color: "#7c3aed",
+    label: "Bedframe Less – Frame & Hoofdbord Wit", box: "Kleine Doos", color: "#7c3aed",
+    images: ["less-frame-hb_0.jpg","less-frame-hb_1.jpg","less-frame-hb_2.jpg"],
     items: [
-      {qty:2, name:"Ophangbeugels Frame Wit", note:"verpakt als 1 colli"},
-      {qty:2, name:"Koppelstukken Hoofdbord Wit", note:"verpakt als 1 colli"},
-      {qty:2, name:"Steunpoten Inlegbox 17.5-21.5 cm"},
-      {qty:1, name:"Beslagset Sledepoten"},
-      {qty:1, name:"Beslagset Ophangbeugels Frame"},
-      {qty:1, name:"Beslagset Koppelstukken Hoofdbord"},
-      {qty:1, name:"Wit Logo"},
-      {qty:1, name:"Installatiehandleiding Frame"},
-      {qty:1, name:"Installatiehandleiding Hoofdbord"},
+      {qty:2, name:"Ophangbeugels Frame Wit", note:"verpakt als 1 colli", loc:"C-01"},
+      {qty:2, name:"Koppelstukken Hoofdbord Wit", note:"verpakt als 1 colli", loc:"C-08"},
+      {qty:2, name:"Steunpoten Inlegbox 17.5-21.5 cm", loc:"C-02"},
+      {qty:1, name:"Beslagset Sledepoten", loc:"C-03"},
+      {qty:1, name:"Beslagset Ophangbeugels Frame", loc:"C-04"},
+      {qty:1, name:"Beslagset Koppelstukken Hoofdbord", loc:"C-09"},
+      {qty:1, name:"Wit Logo", loc:"C-05"},
+      {qty:1, name:"Installatiehandleiding Frame", loc:"C-10"},
+      {qty:1, name:"Installatiehandleiding Hoofdbord", loc:"C-11"},
     ],
   },
   "less-frame-hb-zwart": {
-    label: "Bedframe Less \u2013 Frame & Hoofdbord Zwart", box: "Kleine Doos", color: "#7c3aed",
+    label: "Bedframe Less – Frame & Hoofdbord Zwart", box: "Kleine Doos", color: "#7c3aed",
+    images: ["less-frame-hb_0.jpg","less-frame-hb_1.jpg","less-frame-hb_2.jpg"],
     items: [
-      {qty:2, name:"Ophangbeugels Frame Zwart", note:"verpakt als 1 colli"},
-      {qty:2, name:"Koppelstukken Hoofdbord Zwart", note:"verpakt als 1 colli"},
-      {qty:2, name:"Steunpoten Inlegbox 17.5-21.5 cm"},
-      {qty:1, name:"Beslagset Sledepoten"},
-      {qty:1, name:"Beslagset Ophangbeugels Frame"},
-      {qty:1, name:"Beslagset Koppelstukken Hoofdbord"},
-      {qty:1, name:"Zwart Logo"},
-      {qty:1, name:"Installatiehandleiding Frame"},
-      {qty:1, name:"Installatiehandleiding Hoofdbord"},
+      {qty:2, name:"Ophangbeugels Frame Zwart", note:"verpakt als 1 colli", loc:"C-06"},
+      {qty:2, name:"Koppelstukken Hoofdbord Zwart", note:"verpakt als 1 colli", loc:"C-12"},
+      {qty:2, name:"Steunpoten Inlegbox 17.5-21.5 cm", loc:"C-02"},
+      {qty:1, name:"Beslagset Sledepoten", loc:"C-03"},
+      {qty:1, name:"Beslagset Ophangbeugels Frame", loc:"C-04"},
+      {qty:1, name:"Beslagset Koppelstukken Hoofdbord", loc:"C-09"},
+      {qty:1, name:"Zwart Logo", loc:"C-07"},
+      {qty:1, name:"Installatiehandleiding Frame", loc:"C-10"},
+      {qty:1, name:"Installatiehandleiding Hoofdbord", loc:"C-11"},
     ],
   },
   "less-nachttafels-wit": {
-    label: "Bedframe Less \u2013 Nachttafels Wit", box: "Grote Doos", color: "#7c3aed",
+    label: "Bedframe Less – Nachttafels Wit", box: "Grote Doos", color: "#7c3aed",
+    images: ["less-nachttafels_0.jpg","less-nachttafels_1.jpg","less-nachttafels_2.jpg"],
     items: [
-      {qty:2, name:"Nachttafel Ophangingen Wit"},
-      {qty:1, name:"Beslag Nachttafel Ophanging"},
-      {qty:1, name:"Installatiehandleiding Nachttafel Ophanging"},
+      {qty:2, name:"Nachttafel Ophangingen Wit", loc:"D-01"},
+      {qty:1, name:"Beslag Nachttafel Ophanging", loc:"D-02"},
+      {qty:1, name:"Installatiehandleiding Nachttafel Ophanging", loc:"D-03"},
     ],
   },
   "less-nachttafels-zwart": {
-    label: "Bedframe Less \u2013 Nachttafels Zwart", box: "Grote Doos", color: "#7c3aed",
+    label: "Bedframe Less – Nachttafels Zwart", box: "Grote Doos", color: "#7c3aed",
+    images: ["less-nachttafels_0.jpg","less-nachttafels_1.jpg","less-nachttafels_2.jpg"],
     items: [
-      {qty:2, name:"Nachttafel Ophangingen Zwart"},
-      {qty:1, name:"Beslag Nachttafel Ophanging"},
-      {qty:1, name:"Installatiehandleiding Nachttafel Ophanging"},
+      {qty:2, name:"Nachttafel Ophangingen Zwart", loc:"D-04"},
+      {qty:1, name:"Beslag Nachttafel Ophanging", loc:"D-02"},
+      {qty:1, name:"Installatiehandleiding Nachttafel Ophanging", loc:"D-03"},
     ],
   },
   "insp-hb": {
-    label: "Inspirations \u2013 Hoofdbord 3/4-delig", box: "Kleine Doos", color: "#059669",
+    label: "Inspirations – Hoofdbord 3/4-delig", box: "Kleine Doos", color: "#059669",
+    images: ["insp-hb_0.jpg","insp-hb_1.jpg","insp-hb_2.jpg"],
     items: [
-      {qty:1, name:"Beslagset Houten Kader 3/4-delig"},
-      {qty:1, name:"Beslagset Koppelingslatten 3/4-delig"},
-      {qty:1, name:"Beslagset Muurbevestiging"},
-      {qty:1, name:"Installatiehandleiding Hoofdbord"},
+      {qty:1, name:"Beslagset Houten Kader 3/4-delig", loc:"E-01"},
+      {qty:1, name:"Beslagset Koppelingslatten 3/4-delig", loc:"E-02"},
+      {qty:1, name:"Beslagset Muurbevestiging", loc:"E-03"},
+      {qty:1, name:"Installatiehandleiding Hoofdbord", loc:"E-10"},
     ],
   },
   "insp-hb-nt": {
-    label: "Inspirations \u2013 Hoofdbord 3/4-delig & Nachttafels", box: "Grote Doos", color: "#059669",
+    label: "Inspirations – Hoofdbord 3/4-delig & Nachttafels", box: "Grote Doos", color: "#059669",
+    images: ["insp-hb-nt_0.jpg","insp-hb-nt_1.jpg","insp-hb-nt_2.jpg"],
     items: [
-      {qty:1, name:"Beslagset Houten Kader 3/4-delig"},
-      {qty:1, name:"Beslagset Koppelingslatten 3/4-delig"},
-      {qty:1, name:"Beslagset Muurbevestiging"},
-      {qty:2, name:"Nachttafel Ophangingen Zwart"},
-      {qty:1, name:"Beslagset Nachttafel Ophanging"},
-      {qty:1, name:"Installatiehandleiding Hoofdbord"},
+      {qty:1, name:"Beslagset Houten Kader 3/4-delig", loc:"E-01"},
+      {qty:1, name:"Beslagset Koppelingslatten 3/4-delig", loc:"E-02"},
+      {qty:1, name:"Beslagset Muurbevestiging", loc:"E-03"},
+      {qty:2, name:"Nachttafel Ophangingen Zwart", loc:"D-04"},
+      {qty:1, name:"Beslagset Nachttafel Ophanging", loc:"D-05"},
+      {qty:1, name:"Installatiehandleiding Hoofdbord", loc:"E-10"},
     ],
   },
   "insp-hb-verl": {
-    label: "Inspirations \u2013 Hoofdbord 3/4-delig & Verlichting", box: "Grote Doos", color: "#059669", needsLightColor: true,
+    label: "Inspirations – Hoofdbord 3/4-delig & Verlichting", box: "Grote Doos", color: "#059669", needsLightColor: true,
+    images: ["insp-hb-verl_0.jpg","insp-hb-verl_1.jpg","insp-hb-verl_2.jpg"],
     items: [
-      {qty:1, name:"Beslagset Houten Kader 3/4-delig"},
-      {qty:1, name:"Beslagset Koppelingslatten 3/4-delig"},
-      {qty:1, name:"Beslagset Muurbevestiging"},
-      {qty:2, name:"Verlichtingen", isColorItem:true},
-      {qty:1, name:"Verlichting Connector"},
-      {qty:1, name:"Verlichting Netsnoer met Stekker"},
-      {qty:1, name:"Verlichting Aansluitsnoer 1 m"},
-      {qty:1, name:"Verlichting Aansluitsnoer 3 m"},
-      {qty:1, name:"Installatiehandleiding Hoofdbord"},
+      {qty:1, name:"Beslagset Houten Kader 3/4-delig", loc:"E-01"},
+      {qty:1, name:"Beslagset Koppelingslatten 3/4-delig", loc:"E-02"},
+      {qty:1, name:"Beslagset Muurbevestiging", loc:"E-03"},
+      {qty:2, name:"Verlichtingen", isColorItem:true, loc:"E-04"},
+      {qty:1, name:"Verlichting Connector", loc:"E-05"},
+      {qty:1, name:"Verlichting Netsnoer met Stekker", loc:"E-06"},
+      {qty:1, name:"Verlichting Aansluitsnoer 1 m", loc:"E-07"},
+      {qty:1, name:"Verlichting Aansluitsnoer 3 m", loc:"E-08"},
+      {qty:1, name:"Installatiehandleiding Hoofdbord", loc:"E-10"},
     ],
   },
   "insp-hb-verl-nt": {
-    label: "Inspirations \u2013 Hoofdbord 3/4-delig & Verlichting & Nachttafels", box: "Grote Doos", color: "#059669", needsLightColor: true,
+    label: "Inspirations – Hoofdbord 3/4-delig & Verlichting & Nachttafels", box: "Grote Doos", color: "#059669", needsLightColor: true,
+    images: ["insp-hb-verl-nt_0.jpg","insp-hb-verl-nt_1.jpg","insp-hb-verl-nt_2.jpg"],
     items: [
-      {qty:1, name:"Beslagset Houten Kader 3/4-delig"},
-      {qty:1, name:"Beslagset Koppelingslatten 3/4-delig"},
-      {qty:1, name:"Beslagset Muurbevestiging"},
-      {qty:2, name:"Verlichtingen", isColorItem:true},
-      {qty:1, name:"Verlichting Connector"},
-      {qty:1, name:"Verlichting Netsnoer met Stekker"},
-      {qty:1, name:"Verlichting Aansluitsnoer 1 m"},
-      {qty:1, name:"Verlichting Aansluitsnoer 3 m"},
-      {qty:2, name:"Nachttafel Ophangingen Zwart"},
-      {qty:1, name:"Beslagset Nachttafel Ophanging"},
-      {qty:1, name:"Installatiehandleiding Hoofdbord"},
+      {qty:1, name:"Beslagset Houten Kader 3/4-delig", loc:"E-01"},
+      {qty:1, name:"Beslagset Koppelingslatten 3/4-delig", loc:"E-02"},
+      {qty:1, name:"Beslagset Muurbevestiging", loc:"E-03"},
+      {qty:2, name:"Verlichtingen", isColorItem:true, loc:"E-04"},
+      {qty:1, name:"Verlichting Connector", loc:"E-05"},
+      {qty:1, name:"Verlichting Netsnoer met Stekker", loc:"E-06"},
+      {qty:1, name:"Verlichting Aansluitsnoer 1 m", loc:"E-07"},
+      {qty:1, name:"Verlichting Aansluitsnoer 3 m", loc:"E-08"},
+      {qty:2, name:"Nachttafel Ophangingen Zwart", loc:"D-04"},
+      {qty:1, name:"Beslagset Nachttafel Ophanging", loc:"D-05"},
+      {qty:1, name:"Installatiehandleiding Hoofdbord", loc:"E-10"},
     ],
   },
   "bal-nachttafels": {
-    label: "Boxspring Balance \u2013 Nachttafels", box: "Grote Doos", color: "#dc2626",
+    label: "Boxspring Balance – Nachttafels", box: "Grote Doos", color: "#dc2626",
+    images: ["bal-nachttafels_0.jpg","bal-nachttafels_1.jpg","bal-nachttafels_2.jpg"],
     items: [
-      {qty:2, name:"Nachttafel Ophangingen Zwart"},
-      {qty:1, name:"Beslag Nachttafel Ophanging"},
-      {qty:1, name:"Installatiehandleiding Nachttafel Ophanging"},
+      {qty:2, name:"Nachttafel Ophangingen Zwart", loc:"D-04"},
+      {qty:1, name:"Beslag Nachttafel Ophanging", loc:"D-02"},
+      {qty:1, name:"Installatiehandleiding Nachttafel Ophanging", loc:"D-03"},
     ],
   },
   "bal-1bodem": {
-    label: "Balance Elek. \u2013 E\u00e9n Bodem", box: "Kleine Doos", color: "#dc2626",
+    label: "Balance Elek. – Eén Bodem", box: "Kleine Doos", color: "#dc2626",
+    images: ["bal-1bodem_0.jpg","bal-1bodem_1.jpg","bal-1bodem_2.jpg"],
     items: [
-      {qty:1, name:"Voedingsadapter"},
-      {qty:1, name:"Afstandsbedieninghouder"},
-      {qty:1, name:"Beslagset Metalen Frame"},
-      {qty:1, name:"Installatiehandleiding Koppeling Afstandsbediening"},
+      {qty:1, name:"Voedingsadapter", loc:"B-01"},
+      {qty:1, name:"Afstandsbedieninghouder", loc:"F-01"},
+      {qty:1, name:"Beslagset Metalen Frame", loc:"B-02"},
+      {qty:1, name:"Installatiehandleiding Koppeling Afstandsbediening", loc:"A-11"},
     ],
   },
   "bal-1bodem-hb": {
-    label: "Balance Elek. \u2013 E\u00e9n Bodem & Hoofdbord", box: "Kleine Doos", color: "#dc2626",
+    label: "Balance Elek. – Eén Bodem & Hoofdbord", box: "Kleine Doos", color: "#dc2626",
+    images: ["bal-1bodem-hb_0.jpg","bal-1bodem-hb_1.jpg","bal-1bodem-hb_2.jpg"],
     items: [
-      {qty:2, name:"Koppelstukken Hoofdbord"},
-      {qty:1, name:"Voedingsadapter"},
-      {qty:1, name:"Afstandsbedieninghouder"},
-      {qty:1, name:"Beslagset Metalen Frame"},
-      {qty:1, name:"Installatiehandleiding Koppeling Afstandsbediening"},
+      {qty:2, name:"Koppelstukken Hoofdbord", loc:"F-02"},
+      {qty:1, name:"Voedingsadapter", loc:"B-01"},
+      {qty:1, name:"Afstandsbedieninghouder", loc:"F-01"},
+      {qty:1, name:"Beslagset Metalen Frame", loc:"B-02"},
+      {qty:1, name:"Installatiehandleiding Koppeling Afstandsbediening", loc:"A-11"},
     ],
   },
   "bal-2bodem": {
-    label: "Balance Elek. \u2013 Twee Bodems", box: "Kleine Doos", color: "#dc2626",
+    label: "Balance Elek. – Twee Bodems", box: "Kleine Doos", color: "#dc2626",
+    images: ["bal-2bodem_0.jpg","bal-2bodem_1.jpg","bal-2bodem_2.jpg"],
     items: [
-      {qty:2, name:"Voedingsadapters"},
-      {qty:2, name:"Afstandsbedieninghouders"},
-      {qty:2, name:"Beslagsets Metalen Frame"},
-      {qty:1, name:"Installatiehandleiding Koppeling Afstandsbediening"},
+      {qty:2, name:"Voedingsadapters", loc:"B-01"},
+      {qty:2, name:"Afstandsbedieninghouders", loc:"F-01"},
+      {qty:2, name:"Beslagsets Metalen Frame", loc:"B-02"},
+      {qty:1, name:"Installatiehandleiding Koppeling Afstandsbediening", loc:"A-11"},
     ],
   },
   "bal-2bodem-hb": {
-    label: "Balance Elek. \u2013 Twee Bodems & Hoofdbord", box: "Kleine Doos", color: "#dc2626",
+    label: "Balance Elek. – Twee Bodems & Hoofdbord", box: "Kleine Doos", color: "#dc2626",
+    images: ["bal-2bodem-hb_0.jpg","bal-2bodem-hb_1.jpg","bal-2bodem-hb_2.jpg"],
     items: [
-      {qty:2, name:"Koppelstukken Hoofdbord"},
-      {qty:2, name:"Voedingsadapters"},
-      {qty:2, name:"Afstandsbedieninghouders"},
-      {qty:2, name:"Beslagsets Metalen Frame"},
-      {qty:1, name:"Installatiehandleiding Koppeling Afstandsbediening"},
+      {qty:2, name:"Koppelstukken Hoofdbord", loc:"F-02"},
+      {qty:2, name:"Voedingsadapters", loc:"B-01"},
+      {qty:2, name:"Afstandsbedieninghouders", loc:"F-01"},
+      {qty:2, name:"Beslagsets Metalen Frame", loc:"B-02"},
+      {qty:1, name:"Installatiehandleiding Koppeling Afstandsbediening", loc:"A-11"},
     ],
   },
   "bal-1nek": {
-    label: "Balance Elek. \u2013 E\u00e9n Nekmotor", box: "Kleine Doos", color: "#dc2626",
+    label: "Balance Elek. – Eén Nekmotor", box: "Kleine Doos", color: "#dc2626",
+    images: ["bal-1nek_0.jpg","bal-1nek_1.jpg","bal-1nek_2.jpg"],
     items: [
-      {qty:1, name:"Nekmotor"},
-      {qty:2, name:"Nekmotor Beugels (incl. motorpin)"},
-      {qty:1, name:"Beslagset Nekmotor"},
-      {qty:1, name:"Set AAA Batterijen (2 stuks)"},
+      {qty:1, name:"Nekmotor", loc:"F-03"},
+      {qty:2, name:"Nekmotor Beugels (incl. motorpin)", loc:"F-04"},
+      {qty:1, name:"Beslagset Nekmotor", loc:"F-05"},
+      {qty:1, name:"Set AAA Batterijen (2 stuks)", loc:"F-06"},
     ],
   },
   "bal-2nek": {
-    label: "Balance Elek. \u2013 Twee Nekmotors", box: "Kleine Doos", color: "#dc2626",
+    label: "Balance Elek. – Twee Nekmotors", box: "Kleine Doos", color: "#dc2626",
+    images: ["bal-2nek_0.jpg","bal-2nek_1.jpg","bal-2nek_2.jpg"],
     items: [
-      {qty:2, name:"Nekmotors"},
-      {qty:4, name:"Nekmotor Beugels (incl. motorpin)"},
-      {qty:2, name:"Beslagsets Nekmotor"},
-      {qty:2, name:"Sets AAA Batterijen (2 x 2 stuks)"},
+      {qty:2, name:"Nekmotors", loc:"F-03"},
+      {qty:4, name:"Nekmotor Beugels (incl. motorpin)", loc:"F-04"},
+      {qty:2, name:"Beslagsets Nekmotor", loc:"F-05"},
+      {qty:2, name:"Sets AAA Batterijen (2 x 2 stuks)", loc:"F-06"},
     ],
   },
 };
+
+// ================================================================
+// PICKER TEAM — voeg hier je medewerkers toe
+// ================================================================
+const PICKERS = ["Wim", "Bram", "Jan", "Tom", "Kevin", "Sarah"];
+
+// ================================================================
+// PICK HISTORY — localStorage database
+// ================================================================
+function getHistory() {
+  try { return JSON.parse(localStorage.getItem("pickHistory") || "[]"); }
+  catch { return []; }
+}
+function saveHistory(h) {
+  localStorage.setItem("pickHistory", JSON.stringify(h));
+}
+function addToHistory(entry) {
+  const h = getHistory();
+  h.unshift(entry);
+  if (h.length > 500) h.length = 500;
+  saveHistory(h);
+}
+function updateHistoryEntry(orderNr, updates) {
+  const h = getHistory();
+  const idx = h.findIndex(e => e.orderNr === orderNr && !e.completedAt);
+  if (idx >= 0) Object.assign(h[idx], updates);
+  saveHistory(h);
+}
 
 // ================================================================
 // RESOLVER
@@ -340,6 +403,7 @@ function resolveOrder(product, a) {
 let state = {
   page: "home", product: null, answers: {}, configStep: 0,
   checks: {}, lightColor: null, activeBox: 0,
+  orderNr: "", picker: "", lightboxImg: null,
 };
 
 function setState(patch) {
@@ -348,7 +412,7 @@ function setState(patch) {
 }
 
 function reset() {
-  state = { page: "home", product: null, answers: {}, configStep: 0, checks: {}, lightColor: null, activeBox: 0 };
+  state = { page: "home", product: null, answers: {}, configStep: 0, checks: {}, lightColor: null, activeBox: 0, orderNr: "", picker: "", lightboxImg: null };
   render();
 }
 
@@ -360,23 +424,45 @@ function setAnswer(key, val) {
 // ================================================================
 // RENDER ENGINE
 // ================================================================
-const $ = id => document.getElementById(id);
 const app = () => document.getElementById("app");
-
 function h(html) { app().innerHTML = html; }
 
 function render() {
+  if (state.lightboxImg) renderLightbox();
   if (state.page === "home") renderHome();
+  else if (state.page === "history") renderHistoryPage();
   else if (state.page === "warehouse") renderWarehouse();
+  else if (state.page === "order") renderOrderInput();
   else if (state.page === "config") renderConfig();
   else if (state.page === "pick") renderPick();
 }
 
+// ── LIGHTBOX ──
+function renderLightbox() {
+  let lb = document.getElementById("lightbox");
+  if (!lb) {
+    lb = document.createElement("div");
+    lb.id = "lightbox";
+    document.body.appendChild(lb);
+  }
+  if (!state.lightboxImg) { lb.remove(); return; }
+  lb.className = "lightbox";
+  lb.innerHTML = `<button class="close-btn" onclick="setState({lightboxImg:null})">✕</button><img src="images/${state.lightboxImg}">`;
+  lb.onclick = (e) => { if (e.target === lb) setState({lightboxImg:null}); };
+}
+
+function openLightbox(img) {
+  state.lightboxImg = img;
+  renderLightbox();
+}
+
 // ── HOME ──
 function renderHome() {
+  const hist = getHistory();
+  const recent = hist.slice(0, 3);
   const products = [
     {id:"altaia", icon:"\ud83d\udecf\ufe0f", label:"Bedframe Altaia", color:"#2563eb", desc:"Frame met vaste of elektrische bodems"},
-    {id:"less", icon:"\ud83e\ude9f", label:"Bedframe Less", color:"#7c3aed", desc:"Frame, hoofdbord & nachttafels \u2014 wit of zwart"},
+    {id:"less", icon:"\ud83e\ude9f", label:"Bedframe Less", color:"#7c3aed", desc:"Frame, hoofdbord & nachttafels — wit of zwart"},
     {id:"balance", icon:"\u2699\ufe0f", label:"Boxspring Balance", color:"#dc2626", desc:"Bodems, nekmotors, hoofdbord & nachttafels"},
     {id:"inspirations", icon:"\ud83d\udca1", label:"Hoofdbord Inspirations", color:"#059669", desc:"Standalone hoofdbord 3/4-delig"},
   ];
@@ -384,10 +470,10 @@ function renderHome() {
     <div style="text-align:center;margin-bottom:24px">
       <div style="font-size:44px;margin-bottom:4px">\ud83d\udce6</div>
       <h1>Beslagset Picker</h1>
-      <p class="sub">Kies het product \u2014 de app bepaalt alle dozen</p>
+      <p class="sub">Kies het product — de app bepaalt alle dozen</p>
     </div>
     ${products.map(p => `
-      <button class="card" onclick="setState({page:'config',product:'${p.id}',answers:{},configStep:0})" style="border-color:${p.color}20">
+      <button class="card" onclick="setState({page:'order',product:'${p.id}',answers:{},configStep:0})" style="border-color:${p.color}20">
         <span class="icon">${p.icon}</span>
         <div style="flex:1">
           <div class="label" style="color:${p.color}">${p.label}</div>
@@ -395,209 +481,254 @@ function renderHome() {
         </div>
       </button>
     `).join("")}
-    <div style="text-align:center;margin-top:20px">
-      <button class="back" onclick="setState({page:'warehouse'})" style="border:1px solid #e5e7eb;border-radius:8px;padding:8px 18px;font-size:14px">
-        \ud83c\udfed Magazijn-indeling
-      </button>
-    </div>
-  `);
-}
 
-// ── WAREHOUSE ──
-function renderWarehouse() {
-  const zones = [
-    {z:"1",title:"Dozen (begin)",color:"#b45309",desc:"De picker pakt eerst de juiste doos.",
-      items:["Kleine Dozen \u2014 blauw label","Grote Dozen \u2014 geel label"]},
-    {z:"2",title:"Voorverpakte beslagsets (zakjes)",color:"#7c3aed",desc:"Per type in aparte bak.",
-      items:["Beslagset Sledepoten","Beslagset Ophangbeugels Frame","Beslagset Koppelstukken Hoofdbord","Beslagset Hoekmontage Poten","Beslagset Ophangbeugels Bodem (2 Vast)","Beslagset Ophangbeugels Bodem (1V+1E)","Beslagset Ophangbeugels Bedkader","Beslagset Metalen Frame","Beslagset Nekmotor","Beslagset Nachttafel Ophanging","Beslagset Houten Kader 3/4-delig","Beslagset Koppelingslatten 3/4-delig","Beslagset Muurbevestiging"]},
-    {z:"3",title:"Losse onderdelen",color:"#2563eb",desc:"Per type in telbakken.",
-      items:["Ophangbeugels Bevestiging","Ophangbeugels Ophanging","Hoekmontages Poten","Poten Conisch 60-25x20 Zwart","Steunpoten Inlegbox 17.5-21.5 cm","Steunpoot Middenlat 22-26 cm","Ophoging Middenlat","Koppelstukken Hoofdbord (Balance)","Voedingsadapters","Afstandsbedieninghouders","Nekmotors","Nekmotor Beugels (incl. motorpin)","AAA Batterijen sets"]},
-    {z:"4",title:"Kleurgebonden items",color:"#dc2626",desc:"WIT en ZWART fysiek gescheiden!",
-      items:["Ophangbeugels Frame Wit \u2194 Zwart","Koppelstukken Hoofdbord Wit \u2194 Zwart","Nachttafel Ophangingen Wit \u2194 Zwart","Logo Wit \u2194 Zwart"]},
-    {z:"5",title:"Verlichting (Inspirations)",color:"#059669",desc:"4 kleuren apart!",
-      items:["Verlichtingen ZWART","Verlichtingen WIT","Verlichtingen STAAL","Verlichtingen GOUD","Verlichting Connector","Verlichting Netsnoer met Stekker","Aansluitsnoer 1 m","Aansluitsnoer 3 m"]},
-    {z:"6",title:"Handleidingen",color:"#9333ea",desc:"Per type gesorteerd.",
-      items:["Handl. Frame (Altaia)","Handl. Frame (Less)","Handl. Hoofdbord (Less)","Handl. Hoofdbord (Inspirations)","Handl. Koppeling Afstandsbediening","Handl. Nachttafel Ophanging"]},
-  ];
-  h(`
-    <button class="back" onclick="setState({page:'home'})">\u2190 Terug</button>
-    <h1 style="margin-bottom:16px">\ud83c\udfed Magazijn-indeling</h1>
-    <p style="font-size:14px;color:#6b7280;margin-bottom:16px">Organiseer in zones. Picker loopt Zone 1 \u2192 6.</p>
-    ${zones.map(z => `
-      <div class="zone" style="border:2px solid ${z.color}25">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-          <span class="badge" style="background:${z.color};color:#fff;font-size:14px;padding:3px 10px">Zone ${z.z}</span>
-          <strong style="font-size:15px">${z.title}</strong>
-        </div>
-        <p style="font-size:12px;color:#6b7280;margin-bottom:6px">${z.desc}</p>
-        <div class="tag">${z.items.map(i => `<span>${i}</span>`).join("")}</div>
+    <div style="display:flex;gap:8px;margin-top:20px;justify-content:center">
+      <button class="back" onclick="setState({page:'history'})" style="border:1px solid #e5e7eb;border-radius:8px;padding:8px 18px;font-size:14px">\ud83d\udccb Pickhistorie</button>
+      <button class="back" onclick="setState({page:'warehouse'})" style="border:1px solid #e5e7eb;border-radius:8px;padding:8px 18px;font-size:14px">\ud83c\udfe8 Magazijn</button>
+    </div>
+
+    ${recent.length > 0 ? `
+      <div style="margin-top:20px">
+        <div style="font-size:13px;font-weight:600;color:#6b7280;margin-bottom:8px">Laatste picks:</div>
+        ${recent.map(r => `
+          <div class="history-row">
+            <div>
+              <div class="order">#${r.orderNr}</div>
+              <div class="meta">${r.product} · ${r.picker} · ${new Date(r.startedAt).toLocaleDateString('nl-BE')}</div>
+            </div>
+            <span class="status" style="background:${r.completedAt ? '#d1fae5;color:#059669' : '#fef3c7;color:#d97706'}">${r.completedAt ? 'Compleet' : 'Bezig'}</span>
+          </div>
+        `).join("")}
       </div>
-    `).join("")}
-    <div style="background:#eff6ff;border-radius:12px;padding:14px;margin-top:8px">
-      <strong style="color:#1d4ed8;font-size:14px">Tips</strong>
-      <ul style="padding-left:16px;font-size:13px;line-height:1.8;color:#374151;margin-top:4px">
-        <li>Pickpad = <strong>Zone 1 \u2192 6</strong></li>
-        <li><strong>Kleurcodering</strong> op bakken = kleuren in app</li>
-        <li><strong>QR-code per bak</strong> \u2192 Exact Online artikelcode</li>
-        <li><strong>Minimumvoorraad</strong> op elke bak (rode lijn)</li>
-        <li>WIT en ZWART altijd <strong>fysiek gescheiden</strong></li>
-      </ul>
-    </div>
+    ` : ''}
   `);
 }
 
-// ── CONFIG WIZARD ──
-function getSteps() {
-  const p = state.product, a = state.answers;
-  if (p === "altaia") return [
-    {title:"Bodemtype",sub:"Welke bodemconfiguratie?",key:"bodem",opts:[
-      {id:"2vast",label:"2 Vaste Bodems",desc:"Twee vaste lattenbodems",icon:"\u2550"},
-      {id:"2elek",label:"2 Elektrische Inlegboxen",desc:"Twee elektrisch verstelbare boxen",icon:"\u26a1"},
-      {id:"1+1",label:"1 Vaste + 1 Elektrische",desc:"Combinatie vast en elektrisch",icon:"\u00bd"},
-    ]},
-  ];
-  if (p === "less") return [
-    {title:"Hoofdbord",sub:"Met Less hoofdbord?",key:"hoofdbord",opts:[
-      {id:"ja",label:"Ja, met hoofdbord",icon:"\ud83e\ude91"},{id:"nee",label:"Nee, alleen frame",icon:"\ud83d\uddbc\ufe0f"},
-    ]},
-    {title:"Nachttafels",sub:"Met nachttafels? (aparte doos)",key:"nachttafels",opts:[
-      {id:"ja",label:"Ja, met nachttafels",icon:"\ud83d\uddc4\ufe0f"},{id:"nee",label:"Nee",icon:"\u2715"},
-    ]},
-    {title:"Kleur",sub:"Welke kleur?",key:"kleur",opts:[
-      {id:"wit",label:"Wit",icon:"\u2b1c"},{id:"zwart",label:"Zwart",icon:"\u2b1b"},
-    ]},
-  ];
-  if (p === "inspirations") return [
-    {title:"Type",sub:"3-delig of 4-delig?",key:"delig",opts:[
-      {id:"3",label:"3-delig",icon:"\u2462"},{id:"4",label:"4-delig",icon:"\u2463"},
-    ]},
-    {title:"Verlichting",sub:"Met verlichting?",key:"verlichting",opts:[
-      {id:"ja",label:"Ja, met verlichting",icon:"\ud83d\udca1"},{id:"nee",label:"Nee",icon:"\u2715"},
-    ]},
-    {title:"Nachttafels",sub:"Met nachttafels? (zelfde doos als hoofdbord)",key:"nachttafels",opts:[
-      {id:"ja",label:"Ja",icon:"\ud83d\uddc4\ufe0f"},{id:"nee",label:"Nee",icon:"\u2715"},
-    ]},
-  ];
-  if (p === "balance") {
-    const steps = [
-      {title:"Bodems",sub:"Hoeveel elektrische bodems?",key:"bodems",opts:[
-        {id:"geen",label:"Geen",icon:"\u2715"},{id:"1",label:"1 bodem",icon:"\u2460"},{id:"2",label:"2 bodems",icon:"\u2461"},
-      ]},
-      {title:"Nekmotors",sub:"Hoeveel nekmotors?",key:"nekmotors",opts:[
-        {id:"geen",label:"Geen",icon:"\u2715"},{id:"1",label:"1 nekmotor",icon:"\u2460"},{id:"2",label:"2 nekmotors",icon:"\u2461"},
-      ]},
-      {title:"Inspirations HB",sub:"Met Inspirations hoofdbord? (bepaalt koppelstukken in bodem-set!)",key:"inspHoofdbord",highlight:true,opts:[
-        {id:"ja",label:"Ja, met Inspirations hoofdbord",desc:"\u2192 koppelstukken automatisch bij bodems",icon:"\ud83d\udca1"},
-        {id:"nee",label:"Nee",icon:"\u2715"},
-      ]},
-    ];
-    if (a.inspHoofdbord === "ja") {
-      steps.push({title:"HB type",sub:"3-delig of 4-delig?",key:"inspDelig",opts:[
-        {id:"3",label:"3-delig",icon:"\u2462"},{id:"4",label:"4-delig",icon:"\u2463"},
-      ]});
-      steps.push({title:"HB verlichting",sub:"Met verlichting?",key:"inspVerlichting",opts:[
-        {id:"ja",label:"Ja",icon:"\ud83d\udca1"},{id:"nee",label:"Nee",icon:"\u2715"},
-      ]});
-      steps.push({title:"HB nachttafels",sub:"Nachttafels in Inspirations-doos?",key:"inspNachttafels",opts:[
-        {id:"ja",label:"Ja, in Inspirations-doos",icon:"\ud83d\uddc4\ufe0f"},{id:"nee",label:"Nee",icon:"\u2715"},
-      ]});
+// ── ORDER INPUT ──
+function renderOrderInput() {
+  const valid = state.orderNr.trim().length >= 1 && state.picker;
+  h(`
+    <button class="back" onclick="reset()">\u2190 Terug</button>
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="font-size:36px;margin-bottom:4px">\ud83d\udcdd</div>
+      <h2>Order & Picker</h2>
+      <p class="sub">Vul het ordernummer in en selecteer wie pickt</p>
+    </div>
+
+    <div style="margin-bottom:16px">
+      <label>Ordernummer *</label>
+      <input type="text" id="orderNrInput" placeholder="Bv. ORD-2024-0532" value="${state.orderNr}" oninput="state.orderNr=this.value;render()">
+    </div>
+
+    <div style="margin-bottom:16px">
+      <label>Gepickt door *</label>
+      <select id="pickerSelect" onchange="state.picker=this.value;render()">
+        <option value="">Kies picker...</option>
+        ${PICKERS.map(p => `<option value="${p}" ${state.picker===p?'selected':''}>${p}</option>`).join("")}
+      </select>
+    </div>
+
+    <button class="btn" style="background:${valid ? '#2563eb' : '#d1d5db'}" ${valid ? '' : 'disabled'}
+      onclick="setState({page:'config'})">Volgende \u2192</button>
+  `);
+  // Focus on order input
+  setTimeout(() => { const el = document.getElementById('orderNrInput'); if(el && !el.value) el.focus(); }, 50);
+}
+
+// ── HISTORY PAGE ──
+function renderHistoryPage() {
+  const hist = getHistory();
+  h(`
+    <button class="back" onclick="reset()">\u2190 Terug</button>
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="font-size:36px;margin-bottom:4px">\ud83d\udccb</div>
+      <h2>Pick Historie</h2>
+      <p class="sub">${hist.length} orders geregistreerd</p>
+    </div>
+    ${hist.length === 0 ? '<p style="text-align:center;color:#9ca3af;margin-top:40px">Nog geen picks geregistreerd</p>' :
+      hist.map(r => `
+        <div class="history-row">
+          <div>
+            <div class="order">#${r.orderNr}</div>
+            <div class="meta">${r.product} · ${r.picker} · ${new Date(r.startedAt).toLocaleDateString('nl-BE', {day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}</div>
+            <div class="meta">${r.boxes ? r.boxes + ' dozen' : ''} ${r.completedAt ? '· Klaar om ' + new Date(r.completedAt).toLocaleTimeString('nl-BE', {hour:'2-digit',minute:'2-digit'}) : ''}</div>
+          </div>
+          <span class="status" style="background:${r.completedAt ? '#d1fae5;color:#059669' : '#fef3c7;color:#d97706'}">${r.completedAt ? '\u2705 Compleet' : '\u23f3 Bezig'}</span>
+        </div>
+      `).join("")
     }
-    steps.push({title:"Nachttafels",sub:a.inspNachttafels==="ja"?"Al via Inspirations \u2014 extra aparte set?":"Aparte nachttafels-set?",key:"nachttafels",opts:[
-      {id:"ja",label:"Ja, aparte set",desc:"Aparte grote doos",icon:"\ud83d\uddc4\ufe0f"},{id:"nee",label:"Nee",icon:"\u2715"},
-    ]});
-    return steps;
-  }
+    ${hist.length > 0 ? `<button class="btn-sm" style="background:#dc2626;margin-top:16px;display:block;margin-left:auto;margin-right:auto" onclick="if(confirm('Alle historie wissen?')){localStorage.removeItem('pickHistory');render();}">Wis historie</button>` : ''}
+  `);
+}
+
+// ── CONFIG (wizard questions) ──
+function getSteps(product) {
+  if (product === "altaia") return [
+    {key:"bodem", q:"Welk type bodem?", opts:[
+      {val:"2elek", label:"2 Elektrische Inlegboxen", icon:"\u26a1"},
+      {val:"1+1", label:"1 Vaste + 1 Elektrische", icon:"\ud83d\udd00"},
+      {val:"2vast", label:"2 Vaste Bodems", icon:"\ud83e\uddf1"},
+    ]}
+  ];
+  if (product === "less") return [
+    {key:"kleur", q:"Welke kleur?", opts:[
+      {val:"wit", label:"Wit", icon:"\u26aa"},
+      {val:"zwart", label:"Zwart", icon:"\u26ab"},
+    ]},
+    {key:"hoofdbord", q:"Met hoofdbord?", opts:[
+      {val:"ja", label:"Ja, met hoofdbord", icon:"\u2705"},
+      {val:"nee", label:"Nee, zonder", icon:"\u274c"},
+    ]},
+    {key:"nachttafels", q:"Met nachttafels?", opts:[
+      {val:"ja", label:"Ja, met nachttafels", icon:"\u2705"},
+      {val:"nee", label:"Nee, zonder", icon:"\u274c"},
+    ]},
+  ];
+  if (product === "balance") return [
+    {key:"bodems", q:"Hoeveel elektrische bodems?", opts:[
+      {val:"geen", label:"Geen bodems", icon:"\u274c"},
+      {val:"1", label:"Eén bodem", icon:"1\ufe0f\u20e3"},
+      {val:"2", label:"Twee bodems", icon:"2\ufe0f\u20e3"},
+    ]},
+    {key:"nekmotors", q:"Hoeveel nekmotors?", opts:[
+      {val:"geen", label:"Geen nekmotors", icon:"\u274c"},
+      {val:"1", label:"Eén nekmotor", icon:"1\ufe0f\u20e3"},
+      {val:"2", label:"Twee nekmotors", icon:"2\ufe0f\u20e3"},
+    ]},
+    {key:"inspHoofdbord", q:"Met Inspirations hoofdbord?", opts:[
+      {val:"ja", label:"Ja", icon:"\u2705"},
+      {val:"nee", label:"Nee", icon:"\u274c"},
+    ]},
+    {key:"inspVerlichting", q:"Met verlichting in hoofdbord?", opts:[
+      {val:"ja", label:"Ja", icon:"\ud83d\udca1"},
+      {val:"nee", label:"Nee", icon:"\u274c"},
+    ], showIf: a => a.inspHoofdbord === "ja"},
+    {key:"inspNachttafels", q:"Nachttafels aan hoofdbord?", opts:[
+      {val:"ja", label:"Ja", icon:"\u2705"},
+      {val:"nee", label:"Nee", icon:"\u274c"},
+    ], showIf: a => a.inspHoofdbord === "ja"},
+    {key:"nachttafels", q:"Losse Balance nachttafels?", desc:"(Niet nodig als nachttafels al via Inspirations hoofdbord meekomen)", opts:[
+      {val:"ja", label:"Ja", icon:"\u2705"},
+      {val:"nee", label:"Nee", icon:"\u274c"},
+    ], showIf: a => !(a.inspHoofdbord === "ja" && a.inspNachttafels === "ja")},
+  ];
+  if (product === "inspirations") return [
+    {key:"verlichting", q:"Met verlichting?", opts:[
+      {val:"ja", label:"Ja, met verlichting", icon:"\ud83d\udca1"},
+      {val:"nee", label:"Nee, zonder", icon:"\u274c"},
+    ]},
+    {key:"nachttafels", q:"Met nachttafels?", opts:[
+      {val:"ja", label:"Ja, met nachttafels", icon:"\u2705"},
+      {val:"nee", label:"Nee, zonder", icon:"\u274c"},
+    ]},
+  ];
   return [];
 }
 
 function renderConfig() {
-  const steps = getSteps();
-  const step = steps[state.configStep];
-  if (!step) { setState({page:"pick",checks:{},lightColor:null,activeBox:0}); return; }
+  const steps = getSteps(state.product).filter(s => !s.showIf || s.showIf(state.answers));
+  const idx = state.configStep;
 
-  const p = state.product;
-  const color = {altaia:"#2563eb",less:"#7c3aed",inspirations:"#059669",balance:"#dc2626"}[p];
-  const hasAnswer = state.answers[step.key] !== undefined;
-  const isLast = state.configStep >= steps.length - 1;
-  const boxCount = hasAnswer ? resolveOrder(p, state.answers).length : 0;
+  if (idx >= steps.length) {
+    // All questions answered — start picking
+    const keys = resolveOrder(state.product, state.answers);
+    // Log to history
+    addToHistory({
+      orderNr: state.orderNr,
+      picker: state.picker,
+      product: state.product,
+      answers: {...state.answers},
+      boxes: keys.length,
+      keys: keys,
+      startedAt: new Date().toISOString(),
+      completedAt: null,
+    });
+    setState({page: "pick", checks: {}, lightColor: null, activeBox: 0});
+    return;
+  }
+
+  const step = steps[idx];
+  const productNames = {altaia:"Bedframe Altaia", less:"Bedframe Less", balance:"Boxspring Balance", inspirations:"Hoofdbord Inspirations"};
 
   h(`
-    <button class="back" onclick="${state.configStep > 0 ? 'setState({configStep:state.configStep-1})' : 'reset()'}">\u2190 ${state.configStep === 0 ? "Productlijnen" : "Vorige stap"}</button>
-    <div class="progress">
-      ${steps.map((s,i) => `
-        <div class="step">
-          <div class="bar" style="background:${i < state.configStep ? '#059669' : i === state.configStep ? color : '#e5e7eb'}"></div>
-          <div class="name" style="color:${i <= state.configStep ? '#374151' : '#d1d5db'};font-weight:${i === state.configStep ? 700 : 400}">${s.title}</div>
-        </div>
+    <button class="back" onclick="setState({configStep: Math.max(0, ${idx}-1)${idx === 0 ? ", page:'order'" : ""}})">\u2190 ${idx === 0 ? 'Order' : 'Vorige'}</button>
+    <div style="background:#f1f5f9;border-radius:10px;padding:8px 12px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:13px;font-weight:600;color:#374151">\ud83d\udce6 #${state.orderNr}</span>
+      <span style="font-size:13px;color:#6b7280">${state.picker} · ${productNames[state.product]}</span>
+    </div>
+    <div style="display:flex;gap:4px;margin-bottom:16px">
+      ${steps.map((_, i) => `<div style="flex:1;height:5px;border-radius:3px;background:${i < idx ? '#059669' : i === idx ? '#3b82f6' : '#e5e7eb'}"></div>`).join("")}
+    </div>
+    <h2>${step.q}</h2>
+    ${step.desc ? `<p class="sub">${step.desc}</p>` : ''}
+    <div style="margin-top:16px">
+      ${step.opts.map(o => `
+        <button class="card" onclick="setAnswer('${step.key}','${o.val}');setState({configStep:${idx+1}})" style="border-color:${state.answers[step.key]===o.val?'#3b82f6':'#e5e7eb'}">
+          <span class="icon">${o.icon}</span>
+          <div class="label">${o.label}</div>
+        </button>
       `).join("")}
     </div>
-    <div style="margin-bottom:20px">
-      <h2>${step.title}</h2>
-      <p class="sub ${step.highlight ? 'highlight' : ''}">${step.sub}</p>
-    </div>
-    ${step.opts.map(opt => {
-      const sel = state.answers[step.key] === opt.id;
-      return `<button class="card ${sel ? 'selected' : ''}" style="${sel ? 'border-color:'+color+';background:'+color+'10' : ''}" onclick="setAnswer('${step.key}','${opt.id}')">
-        <span class="icon">${opt.icon || ''}</span>
-        <div style="flex:1">
-          <div class="label">${opt.label}</div>
-          ${opt.desc ? '<div class="desc">'+opt.desc+'</div>' : ''}
-        </div>
-        ${sel ? '<span class="check" style="color:'+color+'">✓</span>' : ''}
-      </button>`;
-    }).join("")}
-    ${hasAnswer ? `<button class="btn" style="background:${color}" onclick="${isLast ? "setState({page:'pick',checks:{},lightColor:null,activeBox:0})" : "setState({configStep:state.configStep+1})"}">${isLast ? '\ud83d\udce6 Toon ' + boxCount + ' beslagset' + (boxCount !== 1 ? 's' : '') : 'Volgende \u2192'}</button>` : ''}
   `);
 }
 
-// ── PICK SCREEN ──
+// ── PICK (checklist) ──
 function renderPick() {
   const keys = resolveOrder(state.product, state.answers);
-  const boxes = keys.map(k => DB[k]).filter(Boolean);
-  if (boxes.length === 0) { reset(); return; }
-
+  const boxes = keys.map(k => ({key: k, ...DB[k]}));
   const bi = state.activeBox;
-  const box = boxes[bi] || boxes[0];
-  const bk = "" + bi;
-  if (!state.checks[bk]) state.checks[bk] = {};
-  const bc = state.checks[bk];
+  const box = boxes[bi];
+  if (!box) { reset(); return; }
+
+  const bc = state.checks[""+bi] || {};
+  const checked = box.items.filter((_, i) => bc[i]).length;
   const total = box.items.length;
-  const checked = Object.values(bc).filter(Boolean).length;
-  const boxDone = total === checked;
+  const boxDone = checked === total;
   const allDone = boxes.every((b, i) => {
     const c = state.checks[""+i] || {};
-    return b.items.every((_,j) => c[j]);
+    return b.items.every((_, j) => c[j]);
   });
-  const delig = state.answers.delig || state.answers.inspDelig;
 
   h(`
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-      <button class="back" onclick="reset()">\u2190 Nieuwe bestelling</button>
-      ${allDone ? '<span class="badge" style="background:#059669;color:#fff">\u2713 ALLES COMPLEET</span>' : ''}
+    <button class="back" onclick="if(confirm('Picking annuleren?')) reset()">\u2190 Stop</button>
+    <div style="background:#f1f5f9;border-radius:10px;padding:8px 12px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:13px;font-weight:600;color:#374151">\ud83d\udce6 #${state.orderNr}</span>
+      <span style="font-size:13px;color:#6b7280">${state.picker}</span>
     </div>
 
-    <div style="background:#f8fafc;border-radius:12px;padding:10px 14px;margin-bottom:14px;border:1px solid #e2e8f0;font-size:14px">
-      <div style="font-weight:700;margin-bottom:6px;color:#475569">Bestelling: ${boxes.length} ${boxes.length===1?'doos':'dozen'}</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap">
-        ${boxes.map((b,i) => {
-          const c = state.checks[""+i] || {};
-          const done = b.items.every((_,j) => c[j]);
-          return `<button class="box-tab ${i===bi?'active':''} ${done?'complete':''}" style="${i===bi ? 'border-color:'+b.color+';border-width:2px' : ''}" onclick="setState({activeBox:${i}})">${done?'\u2713 ':''}${i+1}. ${b.box==='Grote Doos'?'GROOT':'KLEIN'}</button>`;
+    ${boxes.length > 1 ? `
+      <div style="display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;padding-bottom:4px">
+        ${boxes.map((b, i) => {
+          const ic = state.checks[""+i] || {};
+          const done = b.items.every((_, j) => ic[j]);
+          return `<button class="box-tab ${i===bi?'active':''} ${done?'complete':''}"
+            style="${i===bi ? 'border-color:'+b.color+';color:'+b.color : ''}"
+            onclick="setState({activeBox:${i}})">
+            ${done ? '\u2705' : ''} Doos ${i+1}
+          </button>`;
         }).join("")}
       </div>
+    ` : ''}
+
+    <div style="margin-bottom:12px">
+      <h2 style="font-size:17px">Doos ${bi+1}/${boxes.length}: ${box.label}</h2>
+      <div style="display:flex;gap:6px;margin-top:4px">
+        <span class="badge" style="background:${box.color}20;color:${box.color}">${box.box}</span>
+        <span class="badge" style="background:#f3f4f6;color:#6b7280">${total} items</span>
+      </div>
     </div>
 
-    <div style="background:${box.color}08;border-radius:14px;padding:14px;margin-bottom:12px;border:2px solid ${box.color}30">
-      <div style="display:flex;justify-content:space-between;align-items:start">
-        <div>
-          <div style="font-size:12px;font-weight:700;color:${box.color};margin-bottom:3px">DOOS ${bi+1} / ${boxes.length}</div>
-          <h2 style="font-size:17px">${box.label}</h2>
-          ${delig && box.label.includes("3/4") ? '<div style="margin-top:6px"><span class="badge" style="background:#fbbf24;color:#92400e;font-size:13px;padding:3px 10px">\u26a0\ufe0f Dit is een '+delig+'-DELIG hoofdbord</span></div>' : ''}
-        </div>
-        <span class="badge" style="background:${box.box==='Grote Doos'?'#fbbf24':'#93c5fd'};color:${box.box==='Grote Doos'?'#92400e':'#1e40af'};font-size:13px;padding:4px 12px">\ud83d\udce6 ${box.box}</span>
+    <!-- FOTO'S -->
+    ${box.images && box.images.length > 0 ? `
+      <div class="img-gallery">
+        ${box.images.map(img => `<img src="images/${img}" alt="${box.label}" onclick="openLightbox('${img}')" title="Klik om te vergroten">`).join("")}
       </div>
-      <div style="margin-top:8px;height:6px;background:#e5e7eb;border-radius:3px;overflow:hidden">
-        <div style="height:100%;border-radius:3px;transition:width 0.3s;width:${(checked/total)*100}%;background:${boxDone?'#059669':box.color}"></div>
+    ` : ''}
+
+    <!-- PROGRESS -->
+    <div style="margin-bottom:12px">
+      <div style="height:8px;background:#f3f4f6;border-radius:4px;overflow:hidden">
+        <div style="height:100%;border-radius:4px;transition:width 0.3s;width:${(checked/total)*100}%;background:${boxDone?'#059669':box.color}"></div>
       </div>
       <div style="font-size:12px;color:#6b7280;margin-top:3px">${checked} / ${total} items</div>
     </div>
@@ -624,6 +755,7 @@ function renderPick() {
         <div class="checkbox">${done?'\u2713':''}</div>
         <div style="flex:1">
           <div class="name"><span class="qty" style="background:${box.color}">${item.qty}x</span>${name}</div>
+          ${item.loc ? '<div class="loc">\ud83d\udccd '+item.loc+'</div>' : ''}
           ${item.note ? '<div class="note">\u2139\ufe0f '+item.note+'</div>' : ''}
         </div>
       </button>`;
@@ -633,13 +765,26 @@ function renderPick() {
       <div class="complete-box">
         <div style="font-size:36px;margin-bottom:4px">\u2705</div>
         <div style="font-size:18px;font-weight:800">Doos ${bi+1} compleet!</div>
-        <div style="font-size:14px;opacity:0.9;margin-bottom:10px">${box.label} \u2014 ${box.box}</div>
+        <div style="font-size:14px;opacity:0.9;margin-bottom:10px">${box.label} — ${box.box}</div>
         ${bi < boxes.length - 1 ? `<button class="btn" style="background:#047857;max-width:280px;margin-top:4px" onclick="setState({activeBox:${bi+1}})">Volgende doos \u2192</button>` :
-          allDone ? `<div style="font-size:20px;font-weight:800;margin-top:6px">\ud83c\udf89 Alle ${boxes.length} dozen compleet!</div><button class="btn" style="background:#047857;max-width:280px;margin-top:8px" onclick="reset()">Nieuwe bestelling \u2192</button>` :
+          allDone ? `<div style="font-size:20px;font-weight:800;margin-top:6px">\ud83c\udf89 Alle ${boxes.length} dozen compleet!</div>
+            <div style="font-size:14px;opacity:0.9;margin-top:4px">Order #${state.orderNr} — ${state.picker}</div>
+            <button class="btn" style="background:#047857;max-width:280px;margin-top:8px" onclick="completePick()">Afronden & Nieuwe bestelling \u2192</button>` :
           `<div style="font-size:13px;opacity:0.8">Nog niet alle dozen afgevinkt</div>`}
       </div>
     ` : ''}
   `);
+}
+
+function completePick() {
+  // Mark as completed in history
+  const h = getHistory();
+  const idx = h.findIndex(e => e.orderNr === state.orderNr && !e.completedAt);
+  if (idx >= 0) {
+    h[idx].completedAt = new Date().toISOString();
+    saveHistory(h);
+  }
+  reset();
 }
 
 function toggleItem(boxIdx, itemIdx) {
@@ -647,6 +792,67 @@ function toggleItem(boxIdx, itemIdx) {
   if (!state.checks[bk]) state.checks[bk] = {};
   state.checks[bk][itemIdx] = !state.checks[bk][itemIdx];
   render();
+}
+
+// ── WAREHOUSE ──
+function renderWarehouse() {
+  const zones = [
+    {code: "A", name: "Zone A — Altaia Frame", color: "#2563eb", items: [
+      "A-01: Hoekmontages Poten", "A-02: Poten Conisch 60-25x20 Zwart",
+      "A-03: Beslagset Hoekmontage Poten", "A-04: Ophangbeugels Bevestiging",
+      "A-05: Ophangbeugels Ophanging", "A-06: Steunpoot Middenlat",
+      "A-07: Ophoging Middenlat", "A-08: Beslagset Ophangbeugels (1V+1E)",
+      "A-09: Beslagset Ophangbeugels (2V)", "A-10: Handleiding Frame",
+      "A-11: Handleiding Koppeling Afstandsbediening",
+    ]},
+    {code: "B", name: "Zone B — Elektrisch (gedeeld)", color: "#f59e0b", items: [
+      "B-01: Voedingsadapters", "B-02: Beslagsets Metalen Frame",
+      "B-03: Beslagsets Ophangbeugels Bedkader",
+    ]},
+    {code: "C", name: "Zone C — Less Frame", color: "#7c3aed", items: [
+      "C-01: Ophangbeugels Frame Wit", "C-02: Steunpoten Inlegbox",
+      "C-03: Beslagset Sledepoten", "C-04: Beslagset Ophangbeugels Frame",
+      "C-05: Wit Logo", "C-06: Ophangbeugels Frame Zwart", "C-07: Zwart Logo",
+      "C-08: Koppelstukken Hoofdbord Wit", "C-09: Beslagset Koppelstukken Hoofdbord",
+      "C-10: Handleiding Frame", "C-11: Handleiding Hoofdbord",
+      "C-12: Koppelstukken Hoofdbord Zwart",
+    ]},
+    {code: "D", name: "Zone D — Nachttafels (gedeeld)", color: "#ec4899", items: [
+      "D-01: Nachttafel Ophangingen Wit", "D-02: Beslag Nachttafel Ophanging",
+      "D-03: Handleiding Nachttafel Ophanging", "D-04: Nachttafel Ophangingen Zwart",
+      "D-05: Beslagset Nachttafel Ophanging (Insp)",
+    ]},
+    {code: "E", name: "Zone E — Inspirations Hoofdbord", color: "#059669", items: [
+      "E-01: Beslagset Houten Kader", "E-02: Beslagset Koppelingslatten",
+      "E-03: Beslagset Muurbevestiging", "E-04: Verlichtingen",
+      "E-05: Verlichting Connector", "E-06: Netsnoer met Stekker",
+      "E-07: Aansluitsnoer 1 m", "E-08: Aansluitsnoer 3 m",
+      "E-10: Handleiding Hoofdbord",
+    ]},
+    {code: "F", name: "Zone F — Balance Specifiek", color: "#dc2626", items: [
+      "F-01: Afstandsbedieninghouders", "F-02: Koppelstukken Hoofdbord (Balance)",
+      "F-03: Nekmotors", "F-04: Nekmotor Beugels",
+      "F-05: Beslagsets Nekmotor", "F-06: AAA Batterijen",
+    ]},
+  ];
+
+  h(`
+    <button class="back" onclick="reset()">\u2190 Terug</button>
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="font-size:36px;margin-bottom:4px">\ud83c\udfe8</div>
+      <h2>Magazijn Indeling</h2>
+      <p class="sub">Locatiecodes per zone — pas aan in de code</p>
+    </div>
+    ${zones.map(z => `
+      <div class="zone">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="badge" style="background:${z.color};color:#fff;font-size:15px">${z.code}</span>
+          <strong style="font-size:15px">${z.name}</strong>
+        </div>
+        <div class="tag">${z.items.map(i => `<span>${i}</span>`).join("")}</div>
+      </div>
+    `).join("")}
+  `);
 }
 
 // ── INIT ──
